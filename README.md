@@ -62,7 +62,7 @@ Contributions are welcome! Feel free to submit a Pull Request with improvements,
 
 ## 📜 License
 
-This project is licensed under the **MechEnterprise License**.
+This project is licensed under the **MechEnterprise Company**.
 
 ## ⭐ Support
 
